@@ -218,8 +218,3 @@ The API returns structured error responses for all failure scenarios:
 | `400`  | Business rule violation | `"Insufficient stock. Available: 5, requested: 20"` |
 | `404`  | Resource not found | `"Medicine not found: 99"` |
 | `500`  | Unexpected error | `"Internal error: ..."` |
-
----
-
-
-This project is open source and available under the [MIT License](LICENSE)
