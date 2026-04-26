@@ -1,10 +1,10 @@
-# 💊 Pharmacy Management API
+# Pharmacy Management API
 
 A production-ready REST API for pharmacy inventory management, built with **Spring Boot 3.2** and **raw JDBC**. Manage medicines, categories, stock movements, and generate business reports — all through a clean, well-structured API.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -29,7 +29,7 @@ A production-ready REST API for pharmacy inventory management, built with **Spri
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer          | Technology                     |
 |----------------|--------------------------------|
@@ -41,84 +41,15 @@ A production-ready REST API for pharmacy inventory management, built with **Spri
 | Build Tool     | Maven                          |
 | Server         | Embedded Apache Tomcat         |
 
-## 📋 Prerequisites
+## Prerequisites
 
 - **Java** 17 or higher
 - **Maven** 3.8+
 - **MySQL** 8.0+
 
-## 🚀 Getting Started
 
-### 1. Clone the repository
 
-```bash
-git clone https://github.com/kwstinas/Pharmacy-Management.git
-cd Pharmacy-Management
-```
-
-### 2. Create the database
-
-Open MySQL Workbench (or any MySQL client) and run:
-
-```sql
-CREATE DATABASE pharmacy_db
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_unicode_ci;
-```
-
-Then execute the full schema to create the tables:
-
-```sql
-USE pharmacy_db;
-
-CREATE TABLE med_categories (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL UNIQUE,
-  description TEXT
-) ENGINE=InnoDB;
-
-CREATE TABLE medicines (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  code VARCHAR(64) NOT NULL UNIQUE,
-  name VARCHAR(255) NOT NULL,
-  price DECIMAL(10,2) UNSIGNED NOT NULL,
-  stock_qty INT UNSIGNED NOT NULL DEFAULT 0,
-  category_id BIGINT UNSIGNED NOT NULL,
-  FOREIGN KEY (category_id) REFERENCES med_categories(id)
-) ENGINE=InnoDB;
-
-CREATE TABLE stock_movements (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  medicine_id BIGINT UNSIGNED NOT NULL,
-  type ENUM('IN','OUT') NOT NULL,
-  quantity INT UNSIGNED NOT NULL,
-  occurred_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  note TEXT,
-  FOREIGN KEY (medicine_id) REFERENCES medicines(id)
-) ENGINE=InnoDB;
-```
-
-### 3. Configure the connection
-
-Edit `src/main/resources/application.properties`:
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/pharmacy_db
-spring.datasource.username=root
-spring.datasource.password=your_password
-```
-
-### 4. Run the application
-
-```bash
-mvn spring-boot:run
-```
-
-The API will be available at `http://localhost:8080`
-
----
-
-## 📡 API Reference
+## API Reference
 
 All responses follow a unified format:
 
@@ -194,7 +125,7 @@ All responses follow a unified format:
 }
 ```
 
-> ⚠️ The `stock_qty` of the medicine is automatically updated when a movement is recorded. OUT movements are rejected if insufficient stock is available.
+> The `stock_qty` of the medicine is automatically updated when a movement is recorded. OUT movements are rejected if insufficient stock is available.
 
 ---
 
@@ -229,7 +160,7 @@ All responses follow a unified format:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/main/java/com/pharmacy/
@@ -266,7 +197,7 @@ src/main/java/com/pharmacy/
     └── GlobalExceptionHandler.java   #   Unified error responses
 ```
 
-## ⚙️ Design Decisions
+##  Design Decisions
 
 | Decision | Rationale |
 |----------|-----------|
@@ -277,7 +208,7 @@ src/main/java/com/pharmacy/
 | **JOIN queries in repositories** | Medicines always return with their category name, avoiding N+1 query problems. |
 | **Unified ApiResponse wrapper** | All endpoints return the same `{success, message, data}` structure for predictable client-side handling. |
 
-## 🔒 Error Handling
+## Error Handling
 
 The API returns structured error responses for all failure scenarios:
 
@@ -290,6 +221,5 @@ The API returns structured error responses for all failure scenarios:
 
 ---
 
-## 📜 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the [MIT License](LICENSE)
