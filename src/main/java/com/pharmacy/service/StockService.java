@@ -6,6 +6,7 @@ import com.pharmacy.exception.ResourceNotFoundException;
 import com.pharmacy.model.Medicine;
 import com.pharmacy.model.StockMovement;
 import com.pharmacy.model.StockMovement.MovementType;
+import com.pharmacy.repository.ActivityLogRepository;
 import com.pharmacy.repository.MedicineRepository;
 import com.pharmacy.repository.StockMovementRepository;
 import org.springframework.stereotype.Service;
@@ -21,17 +22,16 @@ public class StockService {
 
     private final StockMovementRepository movementRepo;
     private final MedicineRepository medicineRepo;
+    private final ActivityLogRepository logRepo;
 
     public StockService(StockMovementRepository movementRepo,
-                        MedicineRepository medicineRepo) {
+                        MedicineRepository medicineRepo,
+                        ActivityLogRepository logRepo) {
         this.movementRepo = movementRepo;
         this.medicineRepo = medicineRepo;
+        this.logRepo = logRepo;
     }
 
-    /**
-     * Καταγράφει κίνηση stock και ενημερώνει το stock_qty.
-     * @Transactional = αν αποτύχει οτιδήποτε, γίνεται rollback ΟΛΟ.
-     */
     @Transactional
     public StockMovementResponse recordMovement(StockMovementRequest req) {
         Medicine medicine = medicineRepo.findById(req.medicineId())
@@ -45,7 +45,6 @@ public class StockService {
         if (type == MovementType.IN) {
             newQty = currentQty + req.quantity();
         } else {
-            // Έλεγχος: φτάνει το stock;
             if (req.quantity() > currentQty) {
                 throw new BusinessException(
                         "Insufficient stock. Available: " + currentQty
@@ -54,10 +53,8 @@ public class StockService {
             newQty = currentQty - req.quantity();
         }
 
-        // Ενημέρωση stock
         medicineRepo.updateStock(medicine.getId(), newQty);
 
-        // Καταγραφή κίνησης
         StockMovement sm = new StockMovement();
         sm.setMedicineId(req.medicineId());
         sm.setType(type);
@@ -65,6 +62,12 @@ public class StockService {
         sm.setOccurredAt(LocalDateTime.now());
         sm.setNote(req.note());
         sm = movementRepo.save(sm);
+
+        // Log
+        logRepo.log(
+                type == MovementType.IN ? "STOCK_IN" : "STOCK_OUT",
+                "MEDICINE", medicine.getId(),
+                medicine.getName() + " x" + req.quantity());
 
         return new StockMovementResponse(
                 sm.getId(), sm.getMedicineId(), medicine.getName(),
@@ -87,8 +90,6 @@ public class StockService {
         return movementRepo.findByDateRange(from, to).stream()
                 .map(this::toResponse).toList();
     }
-
-    // ====== Reports ======
 
     public StockSummary getStockSummary() {
         long total = medicineRepo.count();

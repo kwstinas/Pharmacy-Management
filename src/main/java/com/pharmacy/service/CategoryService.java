@@ -5,6 +5,7 @@ import com.pharmacy.exception.ResourceNotFoundException;
 import com.pharmacy.exception.BusinessException;
 import com.pharmacy.model.MedCategory;
 import com.pharmacy.repository.CategoryRepository;
+import com.pharmacy.repository.ActivityLogRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,9 +14,11 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository repo;
+    private final ActivityLogRepository logRepo;
 
-    public CategoryService(CategoryRepository repo) {
+    public CategoryService(CategoryRepository repo, ActivityLogRepository logRepo) {
         this.repo = repo;
+        this.logRepo = logRepo;
     }
 
     public List<CategoryResponse> findAll() {
@@ -34,7 +37,6 @@ public class CategoryService {
     }
 
     public CategoryResponse create(CategoryRequest req) {
-        // Έλεγχος: υπάρχει ήδη αυτό το όνομα;
         repo.findByName(req.name()).ifPresent(existing -> {
             throw new BusinessException("Category already exists: " + req.name());
         });
@@ -43,6 +45,8 @@ public class CategoryService {
         c.setName(req.name());
         c.setDescription(req.description());
         c = repo.save(c);
+
+        logRepo.log("CREATE", "CATEGORY", c.getId(), c.getName());
 
         return new CategoryResponse(c.getId(), c.getName(), c.getDescription(), 0);
     }
@@ -55,20 +59,23 @@ public class CategoryService {
         c.setDescription(req.description());
         repo.update(c);
 
+        logRepo.log("UPDATE", "CATEGORY", id, c.getName());
+
         return new CategoryResponse(c.getId(), c.getName(), c.getDescription(),
                 repo.countMedicines(id));
     }
 
     public void delete(Long id) {
-        // Έλεγχος: έχει φάρμακα μέσα;
+        MedCategory c = repo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
+
         int medicines = repo.countMedicines(id);
         if (medicines > 0) {
             throw new BusinessException(
                     "Cannot delete category with " + medicines + " medicines. Move them first.");
         }
-        int rows = repo.deleteById(id);
-        if (rows == 0) {
-            throw new ResourceNotFoundException("Category not found: " + id);
-        }
+        repo.deleteById(id);
+
+        logRepo.log("DELETE", "CATEGORY", id, c.getName());
     }
 }

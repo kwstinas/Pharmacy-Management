@@ -3,6 +3,7 @@ package com.pharmacy.dto;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class Dtos {
 
@@ -39,7 +40,9 @@ public class Dtos {
             BigDecimal price,
 
             @NotNull(message = "Category ID is required")
-            Long categoryId
+            Long categoryId,
+
+            List<String> ingredients
     ) {}
 
     public record MedicineResponse(
@@ -49,7 +52,8 @@ public class Dtos {
             BigDecimal price,
             int stockQty,
             Long categoryId,
-            String categoryName
+            String categoryName,
+            List<String> ingredients
     ) {}
 
     // ====== Stock Movement ======
@@ -102,7 +106,61 @@ public class Dtos {
             int netChange
     ) {}
 
-    // ====== Ενιαίο API Response wrapper ======
+    // ====== Activity Log ======
+
+    public record ActivityLogResponse(
+            Long id,
+            String action,
+            String entityType,
+            Long entityId,
+            String description,
+            LocalDateTime occurredAt
+    ) {}
+
+    public record LogStatsRequest(
+            @NotNull(message = "From date is required")
+            LocalDateTime from,
+
+            @NotNull(message = "To date is required")
+            LocalDateTime to,
+
+            String groupBy  // "month" or "day"
+    ) {}
+
+    public record ActionCount(
+            String action,
+            int count
+    ) {}
+
+    public record PeriodActionCount(
+            String period,
+            String action,
+            int count
+    ) {}
+
+    public record TopMedicine(
+            Long entityId,
+            String medicineName,
+            int movementCount,
+            int totalIn,
+            int totalOut
+    ) {}
+
+    public record LogStats(
+            LocalDateTime from,
+            LocalDateTime to,
+            List<ActionCount> summary,
+            List<PeriodActionCount> breakdown,
+            List<TopMedicine> topMedicines
+    ) {}
+
+    // ====== Search ======
+
+    public record SearchRequest(
+            String query
+    ) {}
+
+    // ====== Generic API wrapper ======
 
     public record ApiResponse<T>(
             boolean success,
