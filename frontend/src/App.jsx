@@ -2,9 +2,27 @@ import { useState, useEffect, useCallback } from "react";
 
 const API = "http://localhost:8080/api";
 
+// ─── API helper with auth token ───
 async function api(path, options = {}) {
   try {
-    const res = await fetch(`${API}${path}`, { headers: { "Content-Type": "application/json" }, ...options });
+    const token = localStorage.getItem("pharma_token");
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${API}${path}`, { headers, ...options });
+    return await res.json();
+  } catch (e) {
+    return { success: false, message: "Connection failed.", data: null };
+  }
+}
+
+// Auth-specific calls (no token needed)
+async function authApi(path, body) {
+  try {
+    const res = await fetch(`${API}/auth${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     return await res.json();
   } catch (e) {
     return { success: false, message: "Connection failed.", data: null };
@@ -18,6 +36,8 @@ function exportToCSV(data, headers, filename) {
   link.download = `${filename}.csv`;
   link.click();
 }
+
+// ─── Micro components ───
 
 function Notif({ msg, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
@@ -114,6 +134,147 @@ function TD({ children, right, mono, accent }) {
     fontFamily: mono ? "var(--mono)" : "var(--body)", fontWeight: mono ? 600 : 400, borderBottom: "1px solid var(--border)" }}>{children}</td>;
 }
 
+// ═══════════════════════════════════════
+// LOGIN PAGE
+// ═══════════════════════════════════════
+function LoginPage({ onLogin }) {
+  const [isRegister, setIsRegister] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const pwChecks = [
+    { label: "8+ characters", test: p => p.length >= 8 },
+    { label: "Lowercase letter", test: p => /[a-z]/.test(p) },
+    { label: "Uppercase letter", test: p => /[A-Z]/.test(p) },
+    { label: "Number", test: p => /[0-9]/.test(p) },
+    { label: "Symbol (!@#$...)", test: p => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(p) },
+    { label: "Not contain username", test: p => !username || !p.toLowerCase().includes(username.toLowerCase()) },
+  ];
+
+  const allValid = pwChecks.every(c => c.test(password));
+  const pwStrength = pwChecks.filter(c => c.test(password)).length;
+  const strengthLabel = pwStrength <= 2 ? "Weak" : pwStrength <= 4 ? "Medium" : pwStrength <= 5 ? "Strong" : "Excellent";
+  const strengthColor = pwStrength <= 2 ? "#ef4444" : pwStrength <= 4 ? "#d97706" : pwStrength <= 5 ? "#2563eb" : "#15803d";
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (isRegister && !allValid) {
+      setError("Please fix password requirements");
+      return;
+    }
+
+    setLoading(true);
+    const path = isRegister ? "/register" : "/login";
+    const r = await authApi(path, { username, password });
+    setLoading(false);
+
+    if (r.success) {
+      localStorage.setItem("pharma_token", r.data.token);
+      localStorage.setItem("pharma_user", r.data.username);
+      localStorage.setItem("pharma_role", r.data.role);
+      onLogin(r.data);
+    } else {
+      setError(r.message);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--body)" }}>
+      <div style={{ width: 400, padding: 36, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 22, fontWeight: 700, color: "var(--accent)", letterSpacing: 2 }}>PHARMA</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--dim)", letterSpacing: 4, marginTop: 4 }}>MANAGEMENT SYSTEM</div>
+        </div>
+
+        <div style={{ display: "flex", marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
+          {["Login", "Register"].map(tab => (
+            <button key={tab} onClick={() => { setIsRegister(tab === "Register"); setError(""); setPassword(""); }}
+              style={{ flex: 1, padding: "10px 0", background: "none", border: "none", cursor: "pointer",
+                fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1, textTransform: "uppercase",
+                color: (tab === "Register") === isRegister ? "var(--accent)" : "var(--dim)",
+                borderBottom: (tab === "Register") === isRegister ? "2px solid var(--accent)" : "2px solid transparent",
+                fontWeight: (tab === "Register") === isRegister ? 700 : 400 }}>
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--dim)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 1.2, fontFamily: "var(--mono)" }}>Username</label>
+            <input value={username} onChange={e => setUsername(e.target.value)} required
+              style={{ width: "100%", padding: "11px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3,
+                fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "var(--body)", boxSizing: "border-box" }}
+              onFocus={e => e.target.style.borderColor = "var(--accent)"} onBlur={e => e.target.style.borderColor = "var(--border)"} />
+            {isRegister && username.length > 0 && (username.length < 3 || !/^[a-zA-Z0-9_]+$/.test(username)) && (
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "#ef4444", marginTop: 4 }}>
+                {username.length < 3 ? "Min 3 characters" : "Only letters, numbers, underscores"}
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: isRegister ? 12 : 20 }}>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--dim)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 1.2, fontFamily: "var(--mono)" }}>Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+              style={{ width: "100%", padding: "11px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3,
+                fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "var(--body)", boxSizing: "border-box" }}
+              onFocus={e => e.target.style.borderColor = "var(--accent)"} onBlur={e => e.target.style.borderColor = "var(--border)"} />
+          </div>
+
+          {isRegister && password.length > 0 && (
+            <div style={{ marginBottom: 20, padding: "12px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <div style={{ flex: 1, height: 4, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(pwStrength / 6) * 100}%`, background: strengthColor, borderRadius: 2, transition: "all 0.3s" }} />
+                </div>
+                <span style={{ fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: strengthColor, minWidth: 55, textAlign: "right" }}>{strengthLabel}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 12px" }}>
+                {pwChecks.map((c, i) => {
+                  const ok = c.test(password);
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: ok ? "#15803d" : "#ef4444" }}>
+                        {ok ? "✓" : "✕"}
+                      </span>
+                      <span style={{ fontSize: 11, fontFamily: "var(--mono)", color: ok ? "var(--dim)" : "var(--text)", textDecoration: ok ? "line-through" : "none" }}>
+                        {c.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div style={{ padding: "8px 12px", background: "#b91c1c18", border: "1px solid #b91c1c40", borderRadius: 3,
+              color: "#ef4444", fontSize: 12, fontFamily: "var(--mono)", marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
+
+          <button type="submit" disabled={loading || (isRegister && !allValid)}
+            style={{ width: "100%", padding: "12px", background: (isRegister && !allValid) ? "var(--border)" : "var(--accent)",
+              color: (isRegister && !allValid) ? "var(--dim)" : "#1a1a1a", border: "none",
+              borderRadius: 3, fontSize: 13, fontWeight: 700, fontFamily: "var(--mono)", letterSpacing: 1,
+              cursor: (loading || (isRegister && !allValid)) ? "not-allowed" : "pointer", textTransform: "uppercase",
+              opacity: loading ? 0.6 : 1 }}>
+            {loading ? "..." : isRegister ? "Create Account" : "Sign In"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
 function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [catStats, setCatStats] = useState([]);
@@ -127,7 +288,6 @@ function DashboardPage() {
   }, []);
 
   if (loading) return <div style={{ padding: 40, color: "var(--dim)", fontFamily: "var(--mono)" }}>LOADING...</div>;
-
   const ac = { CREATE: "#d97706", UPDATE: "#2563eb", DELETE: "#ef4444", STOCK_IN: "#15803d", STOCK_OUT: "#dc2626" };
 
   return (
@@ -138,7 +298,6 @@ function DashboardPage() {
         <Metric label="Low Stock" value={summary?.lowStock || 0} mark="#d97706" />
         <Metric label="Total Value" value={`€${(summary?.totalStockValue || 0).toLocaleString()}`} mark="#15803d" />
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 16, marginBottom: 16 }}>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, overflow: "hidden" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--dim)", textTransform: "uppercase", letterSpacing: 1.5 }}>Categories</div>
@@ -150,7 +309,6 @@ function DashboardPage() {
             </tbody>
           </table>
         </div>
-
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, overflow: "hidden" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--dim)", textTransform: "uppercase", letterSpacing: 1.5 }}>Activity Feed</div>
           <div style={{ padding: 8 }}>
@@ -168,15 +326,12 @@ function DashboardPage() {
           </div>
         </div>
       </div>
-
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, overflow: "hidden" }}>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--dim)", textTransform: "uppercase", letterSpacing: 1.5 }}>Recent Movements</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 1, background: "var(--border)" }}>
           {movements.map((m, i) => (
             <div key={i} style={{ background: "var(--surface)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, color: m.type === "IN" ? "#15803d" : "#ef4444", minWidth: 50 }}>
-                {m.type === "IN" ? "▲ IN" : "▼ OUT"}
-              </span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 14, fontWeight: 700, color: m.type === "IN" ? "#15803d" : "#ef4444", minWidth: 50 }}>{m.type === "IN" ? "▲ IN" : "▼ OUT"}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.medicineName}</div>
                 <div style={{ fontSize: 11, color: "var(--dim)" }}>{m.note || "—"}</div>
@@ -191,6 +346,9 @@ function DashboardPage() {
   );
 }
 
+// ═══════════════════════════════════════
+// CATEGORIES
+// ═══════════════════════════════════════
 function CategoriesPage({ notify }) {
   const [cats, setCats] = useState([]);
   const [modal, setModal] = useState(false);
@@ -218,13 +376,10 @@ function CategoriesPage({ notify }) {
           <thead><tr><TH>Name</TH><TH>Description</TH><TH right>Medicines</TH><TH right>Actions</TH></tr></thead>
           <tbody>
             {cats.map(c => (
-              <tr key={c.id}>
-                <TD mono>{c.name}</TD><TD>{c.description || "—"}</TD>
-                <TD right><Pill>{c.medicineCount}</Pill></TD>
-                <TD right><div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}><Act kind="ghost" onClick={() => { setEditing(c); setForm({ name: c.name, description: c.description || "" }); setModal(true); }}>edit</Act><Act kind="danger" onClick={() => remove(c.id)}>del</Act></div></TD>
-              </tr>
+              <tr key={c.id}><TD mono>{c.name}</TD><TD>{c.description || "—"}</TD><TD right><Pill>{c.medicineCount}</Pill></TD>
+                <TD right><div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}><Act kind="ghost" onClick={() => { setEditing(c); setForm({ name: c.name, description: c.description || "" }); setModal(true); }}>edit</Act><Act kind="danger" onClick={() => remove(c.id)}>del</Act></div></TD></tr>
             ))}
-            {cats.length === 0 && <tr><td colSpan={4} style={{ padding: 30, textAlign: "center", color: "var(--dim)", fontSize: 12 }}>Empty. Create a category to start.</td></tr>}
+            {cats.length === 0 && <tr><td colSpan={4} style={{ padding: 30, textAlign: "center", color: "var(--dim)", fontSize: 12 }}>Empty.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -239,6 +394,9 @@ function CategoriesPage({ notify }) {
   );
 }
 
+// ═══════════════════════════════════════
+// MEDICINES
+// ═══════════════════════════════════════
 function MedicinesPage({ notify }) {
   const [meds, setMeds] = useState([]);
   const [cats, setCats] = useState([]);
@@ -275,7 +433,7 @@ function MedicinesPage({ notify }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <span style={{ fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--dim)", textTransform: "uppercase", letterSpacing: 2 }}>{display.length} medicines</span>
-          {results !== null && <button onClick={() => { setQ(""); setResults(null); }} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, fontFamily: "var(--mono)" }}>✕ clear search</button>}
+          {results !== null && <button onClick={() => { setQ(""); setResults(null); }} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 11, fontFamily: "var(--mono)" }}>✕ clear</button>}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <input placeholder="Search name, code, ingredient..." value={q} onChange={e => setQ(e.target.value)}
@@ -289,11 +447,9 @@ function MedicinesPage({ notify }) {
           <tbody>
             {display.map(m => (
               <tr key={m.id}>
-                <TD mono accent="var(--accent)">{m.code}</TD>
-                <TD>{m.name}</TD>
+                <TD mono accent="var(--accent)">{m.code}</TD><TD>{m.name}</TD>
                 <TD><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{(m.ingredients || []).length > 0 ? m.ingredients.map((ing, i) => <Tag key={i} name={ing} />) : <span style={{ color: "var(--dim)", fontSize: 11 }}>—</span>}</div></TD>
-                <TD>{m.categoryName}</TD>
-                <TD right mono>€{m.price?.toFixed(2)}</TD>
+                <TD>{m.categoryName}</TD><TD right mono>€{m.price?.toFixed(2)}</TD>
                 <TD right><Pill color={stockColor(m.stockQty)}>{m.stockQty}</Pill></TD>
                 <TD right><div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}><Act kind="ghost" onClick={() => { setEditing(m); setForm({ code: m.code, name: m.name, price: m.price.toString(), categoryId: m.categoryId.toString(), ingredients: m.ingredients || [] }); setModal(true); }}>edit</Act><Act kind="danger" onClick={() => remove(m.id)}>del</Act></div></TD>
               </tr>
@@ -326,6 +482,9 @@ function MedicinesPage({ notify }) {
   );
 }
 
+// ═══════════════════════════════════════
+// STOCK
+// ═══════════════════════════════════════
 function StockPage({ notify }) {
   const [moves, setMoves] = useState([]);
   const [meds, setMeds] = useState([]);
@@ -335,10 +494,9 @@ function StockPage({ notify }) {
   useEffect(() => { load(); }, [load]);
 
   const submit = async () => {
-    if (!form.medicineId || !form.quantity) return notify("Medicine and quantity required", "error");
+    if (!form.medicineId || !form.quantity) return notify("Required", "error");
     const r = await api("/stock/movement", { method: "POST", body: JSON.stringify({ medicineId: parseInt(form.medicineId), type: form.type, quantity: parseInt(form.quantity), note: form.note }) });
-    if (r.success) { notify(`Stock ${form.type}`); setModal(false); setForm({ medicineId: "", type: "IN", quantity: "", note: "" }); load(); }
-    else notify(r.message, "error");
+    if (r.success) { notify(`Stock ${form.type}`); setModal(false); setForm({ medicineId: "", type: "IN", quantity: "", note: "" }); load(); } else notify(r.message, "error");
   };
 
   return (
@@ -352,13 +510,9 @@ function StockPage({ notify }) {
           <thead><tr><TH>Type</TH><TH>Medicine</TH><TH right>Qty</TH><TH>Date</TH><TH>Note</TH></tr></thead>
           <tbody>
             {moves.map((m, i) => (
-              <tr key={i}>
-                <TD><Pill color={m.type === "IN" ? "#15803d" : "#ef4444"}>▲ {m.type}</Pill></TD>
-                <TD>{m.medicineName}</TD>
+              <tr key={i}><TD><Pill color={m.type === "IN" ? "#15803d" : "#ef4444"}>▲ {m.type}</Pill></TD><TD>{m.medicineName}</TD>
                 <TD right mono accent={m.type === "IN" ? "#15803d" : "#ef4444"}>{m.type === "IN" ? "+" : "−"}{m.quantity}</TD>
-                <TD mono>{m.occurredAt ? new Date(m.occurredAt).toLocaleString("el-GR") : "—"}</TD>
-                <TD>{m.note || "—"}</TD>
-              </tr>
+                <TD mono>{m.occurredAt ? new Date(m.occurredAt).toLocaleString("el-GR") : "—"}</TD><TD>{m.note || "—"}</TD></tr>
             ))}
             {moves.length === 0 && <tr><td colSpan={5} style={{ padding: 30, textAlign: "center", color: "var(--dim)", fontSize: 12 }}>No movements.</td></tr>}
           </tbody>
@@ -387,6 +541,9 @@ function StockPage({ notify }) {
   );
 }
 
+// ═══════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════
 function LogPage() {
   const [logs, setLogs] = useState([]);
   const [limit, setLimit] = useState(50);
@@ -413,15 +570,20 @@ function LogPage() {
   );
 }
 
+// ═══════════════════════════════════════
+// STATISTICS
+// ═══════════════════════════════════════
 function StatsPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [preset, setPreset] = useState("year");
 
-  const ranges = { month: () => { const n = new Date(); return { from: new Date(n.getFullYear(), n.getMonth(), 1), to: n }; },
+  const ranges = {
+    month: () => { const n = new Date(); return { from: new Date(n.getFullYear(), n.getMonth(), 1), to: n }; },
     quarter: () => { const n = new Date(); return { from: new Date(n.getFullYear(), n.getMonth() - 2, 1), to: n }; },
     half: () => { const n = new Date(); return { from: new Date(n.getFullYear(), n.getMonth() - 5, 1), to: n }; },
-    year: () => { const n = new Date(); return { from: new Date(n.getFullYear(), 0, 1), to: n }; } };
+    year: () => { const n = new Date(); return { from: new Date(n.getFullYear(), 0, 1), to: n }; },
+  };
 
   const loadStats = useCallback(() => {
     setLoading(true);
@@ -433,19 +595,16 @@ function StatsPage() {
 
   const ac = { CREATE: "#d97706", UPDATE: "#2563eb", DELETE: "#ef4444", STOCK_IN: "#15803d", STOCK_OUT: "#dc2626" };
   const labels = { month: "Month", quarter: "3 Months", half: "6 Months", year: "Year" };
+  const maxC = Math.max(1, ...(stats?.breakdown || []).map(b => b.count));
 
   const doExport = () => {
     if (!stats) return;
     const rows = [];
     (stats.summary || []).forEach(s => rows.push({ A: "Summary", B: s.action, C: s.count }));
-    rows.push({ A: "---", B: "", C: "" });
     (stats.breakdown || []).forEach(b => rows.push({ A: b.period, B: b.action, C: b.count }));
-    rows.push({ A: "---", B: "", C: "" });
     (stats.topMedicines || []).forEach(m => rows.push({ A: m.medicineName, B: `IN:${m.totalIn} OUT:${m.totalOut}`, C: m.movementCount }));
     exportToCSV(rows, [{ label: "Period", accessor: "A" }, { label: "Detail", accessor: "B" }, { label: "Count", accessor: "C" }], `stats-${preset}`);
   };
-
-  const maxC = Math.max(1, ...(stats?.breakdown || []).map(b => b.count));
 
   return (
     <div>
@@ -466,29 +625,25 @@ function StatsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: 20 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--dim)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 14 }}>Breakdown</div>
-              {(stats.breakdown || []).length === 0 ? <div style={{ color: "var(--dim)", fontSize: 12 }}>No data.</div> :
-                (stats.breakdown || []).map((b, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ width: 60, fontSize: 10, fontFamily: "var(--mono)", color: "var(--dim)" }}>{b.period}</span>
-                    <span style={{ width: 60, fontSize: 10, fontFamily: "var(--mono)", color: ac[b.action], fontWeight: 600 }}>{b.action}</span>
-                    <div style={{ flex: 1, height: 16, background: "var(--bg)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(b.count / maxC) * 100}%`, background: ac[b.action] || "var(--dim)", borderRadius: 2, transition: "width 0.4s" }} />
-                    </div>
-                    <span style={{ width: 28, fontSize: 11, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--text)", textAlign: "right" }}>{b.count}</span>
-                  </div>
-                ))}
+              {(stats.breakdown || []).map((b, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{ width: 60, fontSize: 10, fontFamily: "var(--mono)", color: "var(--dim)" }}>{b.period}</span>
+                  <span style={{ width: 60, fontSize: 10, fontFamily: "var(--mono)", color: ac[b.action], fontWeight: 600 }}>{b.action}</span>
+                  <div style={{ flex: 1, height: 16, background: "var(--bg)", borderRadius: 2, overflow: "hidden" }}><div style={{ height: "100%", width: `${(b.count / maxC) * 100}%`, background: ac[b.action] || "var(--dim)", borderRadius: 2 }} /></div>
+                  <span style={{ width: 28, fontSize: 11, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--text)", textAlign: "right" }}>{b.count}</span>
+                </div>
+              ))}
             </div>
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: 20 }}>
               <div style={{ fontSize: 10, fontFamily: "var(--mono)", fontWeight: 700, color: "var(--dim)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 14 }}>Top Medicines</div>
-              {(stats.topMedicines || []).length === 0 ? <div style={{ color: "var(--dim)", fontSize: 12 }}>No data.</div> :
-                (stats.topMedicines || []).map((m, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < stats.topMedicines.length - 1 ? "1px solid var(--border)" : "none" }}>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--accent)", width: 20 }}>{i + 1}</span>
-                    <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{m.medicineName}</div><div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--dim)" }}>{m.movementCount} moves</div></div>
-                    <span style={{ fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600, color: "#15803d" }}>+{m.totalIn}</span>
-                    <span style={{ fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600, color: "#ef4444" }}>−{m.totalOut}</span>
-                  </div>
-                ))}
+              {(stats.topMedicines || []).map((m, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < stats.topMedicines.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "var(--accent)", width: 20 }}>{i + 1}</span>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{m.medicineName}</div><div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--dim)" }}>{m.movementCount} moves</div></div>
+                  <span style={{ fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600, color: "#15803d" }}>+{m.totalIn}</span>
+                  <span style={{ fontSize: 11, fontFamily: "var(--mono)", fontWeight: 600, color: "#ef4444" }}>−{m.totalOut}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -497,10 +652,35 @@ function StatsPage() {
   );
 }
 
+// ═══════════════════════════════════════
+// MAIN APP
+// ═══════════════════════════════════════
 export default function App() {
+  const [user, setUser] = useState(null);
   const [page, setPage] = useState("dashboard");
   const [toast, setToast] = useState(null);
   const notify = useCallback((msg, type = "ok") => setToast({ msg, type }), []);
+
+  // Check if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("pharma_token");
+    const username = localStorage.getItem("pharma_user");
+    const role = localStorage.getItem("pharma_role");
+    if (token && username) {
+      setUser({ token, username, role });
+    }
+  }, []);
+
+  const handleLogin = (data) => {
+    setUser(data);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("pharma_token");
+    localStorage.removeItem("pharma_user");
+    localStorage.removeItem("pharma_role");
+    setUser(null);
+  };
 
   const nav = [
     { id: "dashboard", label: "Overview" },
@@ -512,7 +692,7 @@ export default function App() {
   ];
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)", fontFamily: "var(--body)", color: "var(--text)" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "var(--body)", color: "var(--text)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
         :root {
@@ -526,7 +706,6 @@ export default function App() {
           --body: 'Outfit', sans-serif;
         }
         * { margin: 0; box-sizing: border-box; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         button:hover { opacity: 0.88; }
         tr:hover td { background: #1e2123 !important; }
         ::selection { background: var(--accent); color: #1a1a1a; }
@@ -535,39 +714,55 @@ export default function App() {
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
       `}</style>
 
-      <div style={{ width: 200, background: "var(--surface)", borderRight: "1px solid var(--border)", padding: "24px 0", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "0 20px", marginBottom: 32 }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 15, fontWeight: 700, color: "var(--accent)", letterSpacing: 1 }}>PHARMA</div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--dim)", letterSpacing: 3, marginTop: 2 }}>MGMT SYSTEM</div>
-        </div>
-        <nav style={{ flex: 1 }}>
-          {nav.map(item => (
-            <button key={item.id} onClick={() => setPage(item.id)} style={{
-              display: "block", width: "100%", textAlign: "left", padding: "10px 20px", border: "none", cursor: "pointer",
-              fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1, textTransform: "uppercase",
-              background: page === item.id ? "var(--bg)" : "transparent",
-              color: page === item.id ? "var(--accent)" : "var(--dim)",
-              borderLeft: page === item.id ? "2px solid var(--accent)" : "2px solid transparent",
-              fontWeight: page === item.id ? 700 : 400 }}>{item.label}</button>
-          ))}
-        </nav>
-        <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--dim)", letterSpacing: 1 }}>SPRING BOOT + REACT</div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "#3a3a3a", marginTop: 2 }}>v2.0.0</div>
-        </div>
-      </div>
+      {!user ? (
+        <LoginPage onLogin={handleLogin} />
+      ) : (
+        <div style={{ display: "flex", minHeight: "100vh" }}>
+          {/* Sidebar */}
+          <div style={{ width: 200, background: "var(--surface)", borderRight: "1px solid var(--border)", padding: "24px 0", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "0 20px", marginBottom: 32 }}>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 15, fontWeight: 700, color: "var(--accent)", letterSpacing: 1 }}>PHARMA</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 9, color: "var(--dim)", letterSpacing: 3, marginTop: 2 }}>MGMT SYSTEM</div>
+            </div>
 
-      <div style={{ flex: 1, padding: "28px 36px", maxWidth: 1100, overflowY: "auto" }}>
-        <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--border)" }}>
-          <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", fontFamily: "var(--body)", margin: 0 }}>{nav.find(n => n.id === page)?.label}</h1>
+            <nav style={{ flex: 1 }}>
+              {nav.map(item => (
+                <button key={item.id} onClick={() => setPage(item.id)} style={{
+                  display: "block", width: "100%", textAlign: "left", padding: "10px 20px", border: "none", cursor: "pointer",
+                  fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1, textTransform: "uppercase",
+                  background: page === item.id ? "var(--bg)" : "transparent",
+                  color: page === item.id ? "var(--accent)" : "var(--dim)",
+                  borderLeft: page === item.id ? "2px solid var(--accent)" : "2px solid transparent",
+                  fontWeight: page === item.id ? 700 : 400 }}>{item.label}</button>
+              ))}
+            </nav>
+
+            <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--accent)", marginBottom: 4 }}>{user.username}</div>
+              <div style={{ fontSize: 10, fontFamily: "var(--mono)", color: "var(--dim)", marginBottom: 10 }}>{user.role}</div>
+              <button onClick={handleLogout} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 3,
+                padding: "5px 12px", color: "var(--dim)", fontSize: 10, fontFamily: "var(--mono)", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" }}>
+                Logout
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, padding: "28px 36px", maxWidth: 1100, overflowY: "auto" }}>
+            <div style={{ marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--border)" }}>
+              <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", fontFamily: "var(--body)", margin: 0 }}>
+                {nav.find(n => n.id === page)?.label}
+              </h1>
+            </div>
+            {page === "dashboard" && <DashboardPage />}
+            {page === "categories" && <CategoriesPage notify={notify} />}
+            {page === "medicines" && <MedicinesPage notify={notify} />}
+            {page === "stock" && <StockPage notify={notify} />}
+            {page === "logs" && <LogPage />}
+            {page === "stats" && <StatsPage />}
+          </div>
         </div>
-        {page === "dashboard" && <DashboardPage />}
-        {page === "categories" && <CategoriesPage notify={notify} />}
-        {page === "medicines" && <MedicinesPage notify={notify} />}
-        {page === "stock" && <StockPage notify={notify} />}
-        {page === "logs" && <LogPage />}
-        {page === "stats" && <StatsPage />}
-      </div>
+      )}
 
       {toast && <Notif msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
