@@ -141,6 +141,7 @@ function LoginPage({ onLogin }) {
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -161,17 +162,10 @@ function LoginPage({ onLogin }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    if (isRegister && !allValid) {
-      setError("Please fix password requirements");
-      return;
-    }
-
+    if (isRegister && !allValid) { setError("Please fix password requirements"); return; }
     setLoading(true);
-    const path = isRegister ? "/register" : "/login";
-    const r = await authApi(path, { username, password });
+    const r = await authApi(isRegister ? "/register" : "/login", { username, password });
     setLoading(false);
-
     if (r.success) {
       localStorage.setItem("pharma_token", r.data.token);
       localStorage.setItem("pharma_user", r.data.username);
@@ -181,6 +175,23 @@ function LoginPage({ onLogin }) {
       setError(r.message);
     }
   };
+
+  const eyeIcon = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {showPw ? (
+        <>
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </>
+      ) : (
+        <>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </>
+      )}
+    </svg>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--body)" }}>
@@ -219,10 +230,17 @@ function LoginPage({ onLogin }) {
 
           <div style={{ marginBottom: isRegister ? 12 : 20 }}>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "var(--dim)", marginBottom: 5, textTransform: "uppercase", letterSpacing: 1.2, fontFamily: "var(--mono)" }}>Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-              style={{ width: "100%", padding: "11px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3,
-                fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "var(--body)", boxSizing: "border-box" }}
-              onFocus={e => e.target.style.borderColor = "var(--accent)"} onBlur={e => e.target.style.borderColor = "var(--border)"} />
+            <div style={{ position: "relative" }}>
+              <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required
+                style={{ width: "100%", padding: "11px 44px 11px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 3,
+                  fontSize: 14, color: "var(--text)", outline: "none", fontFamily: "var(--body)", boxSizing: "border-box" }}
+                onFocus={e => e.target.style.borderColor = "var(--accent)"} onBlur={e => e.target.style.borderColor = "var(--border)"} />
+              <button type="button" onClick={() => setShowPw(!showPw)}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", cursor: "pointer", color: showPw ? "var(--accent)" : "var(--dim)", padding: 2, display: "flex" }}>
+                {eyeIcon}
+              </button>
+            </div>
           </div>
 
           {isRegister && password.length > 0 && (
@@ -238,12 +256,8 @@ function LoginPage({ onLogin }) {
                   const ok = c.test(password);
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: ok ? "#15803d" : "#ef4444" }}>
-                        {ok ? "✓" : "✕"}
-                      </span>
-                      <span style={{ fontSize: 11, fontFamily: "var(--mono)", color: ok ? "var(--dim)" : "var(--text)", textDecoration: ok ? "line-through" : "none" }}>
-                        {c.label}
-                      </span>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: ok ? "#15803d" : "#ef4444" }}>{ok ? "✓" : "✕"}</span>
+                      <span style={{ fontSize: 11, fontFamily: "var(--mono)", color: ok ? "var(--dim)" : "var(--text)", textDecoration: ok ? "line-through" : "none" }}>{c.label}</span>
                     </div>
                   );
                 })}

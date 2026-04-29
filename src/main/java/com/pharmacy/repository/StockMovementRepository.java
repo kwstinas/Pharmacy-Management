@@ -44,32 +44,29 @@ public class StockMovementRepository {
         this.jdbc = jdbc;
     }
 
-    public List<StockMovement> findAll(int limit) {
+    public List<StockMovement> findAll(int limit, Long userId) {
         return jdbc.query(
-                SELECT_WITH_JOIN + " ORDER BY sm.occurred_at DESC LIMIT ?",
-                ROW_MAPPER_WITH_NAME, limit);
+                SELECT_WITH_JOIN + " WHERE sm.user_id = ? ORDER BY sm.occurred_at DESC LIMIT ?",
+                ROW_MAPPER_WITH_NAME, userId, limit);
     }
 
-    public List<StockMovement> findByMedicine(Long medicineId) {
+    public List<StockMovement> findByMedicine(Long medicineId, Long userId) {
         return jdbc.query(
-                SELECT_WITH_JOIN + " WHERE sm.medicine_id = ? ORDER BY sm.occurred_at DESC",
-                ROW_MAPPER_WITH_NAME, medicineId);
+                SELECT_WITH_JOIN + " WHERE sm.medicine_id = ? AND sm.user_id = ? ORDER BY sm.occurred_at DESC",
+                ROW_MAPPER_WITH_NAME, medicineId, userId);
     }
 
-    public List<StockMovement> findByDateRange(LocalDateTime from, LocalDateTime to) {
+    public List<StockMovement> findByDateRange(LocalDateTime from, LocalDateTime to, Long userId) {
         return jdbc.query(
-                SELECT_WITH_JOIN + " WHERE sm.occurred_at BETWEEN ? AND ? ORDER BY sm.occurred_at DESC",
-                ROW_MAPPER_WITH_NAME, Timestamp.valueOf(from), Timestamp.valueOf(to));
+                SELECT_WITH_JOIN + " WHERE sm.occurred_at BETWEEN ? AND ? AND sm.user_id = ? ORDER BY sm.occurred_at DESC",
+                ROW_MAPPER_WITH_NAME, Timestamp.valueOf(from), Timestamp.valueOf(to), userId);
     }
 
-    public StockMovement save(StockMovement movement) {
+    public StockMovement save(StockMovement movement, Long userId) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    """
-                    INSERT INTO stock_movements (medicine_id, type, quantity, occurred_at, note)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
+                    "INSERT INTO stock_movements (medicine_id, type, quantity, occurred_at, note, user_id) VALUES (?, ?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setLong(1, movement.getMedicineId());
             ps.setString(2, movement.getType().name());
@@ -78,28 +75,26 @@ public class StockMovementRepository {
                     ? Timestamp.valueOf(movement.getOccurredAt())
                     : Timestamp.valueOf(LocalDateTime.now()));
             ps.setString(5, movement.getNote());
+            ps.setLong(6, userId);
             return ps;
         }, keyHolder);
         movement.setId(keyHolder.getKey().longValue());
         return movement;
     }
 
-    // Μηνιαία σύνοψη IN/OUT
-    public List<Map<String, Object>> monthlySummary(int months) {
+    public List<Map<String, Object>> monthlySummary(int months, Long userId) {
         return jdbc.queryForList(
                 """
                 SELECT DATE_FORMAT(occurred_at, '%Y-%m') AS period,
-                       SUM(CASE WHEN type = 'IN'  THEN quantity ELSE 0 END) AS total_in,
+                       SUM(CASE WHEN type = 'IN' THEN quantity ELSE 0 END) AS total_in,
                        SUM(CASE WHEN type = 'OUT' THEN quantity ELSE 0 END) AS total_out
                 FROM stock_movements
-                WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)
-                GROUP BY period
-                ORDER BY period DESC
-                """, months);
+                WHERE occurred_at >= DATE_SUB(NOW(), INTERVAL ? MONTH) AND user_id = ?
+                GROUP BY period ORDER BY period DESC
+                """, months, userId);
     }
 
-    // Στατιστικά ανά κατηγορία
-    public List<Map<String, Object>> categoryStats() {
+    public List<Map<String, Object>> categoryStats(Long userId) {
         return jdbc.queryForList(
                 """
                 SELECT c.id AS category_id, c.name AS category_name,
@@ -107,9 +102,9 @@ public class StockMovementRepository {
                        COALESCE(SUM(m.stock_qty), 0) AS total_stock,
                        COALESCE(SUM(m.stock_qty * m.price), 0) AS total_value
                 FROM med_categories c
-                LEFT JOIN medicines m ON c.id = m.category_id
-                GROUP BY c.id, c.name
-                ORDER BY total_value DESC
-                """);
+                LEFT JOIN medicines m ON c.id = m.category_id AND m.user_id = ?
+                WHERE c.user_id = ?
+                GROUP BY c.id, c.name ORDER BY total_value DESC
+                """, userId, userId);
     }
 }

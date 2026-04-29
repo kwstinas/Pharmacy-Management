@@ -9,6 +9,7 @@ import com.pharmacy.model.StockMovement.MovementType;
 import com.pharmacy.repository.ActivityLogRepository;
 import com.pharmacy.repository.MedicineRepository;
 import com.pharmacy.repository.StockMovementRepository;
+import com.pharmacy.security.AuthHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +25,7 @@ public class StockService {
     private final MedicineRepository medicineRepo;
     private final ActivityLogRepository logRepo;
 
-    public StockService(StockMovementRepository movementRepo,
-                        MedicineRepository medicineRepo,
+    public StockService(StockMovementRepository movementRepo, MedicineRepository medicineRepo,
                         ActivityLogRepository logRepo) {
         this.movementRepo = movementRepo;
         this.medicineRepo = medicineRepo;
@@ -34,80 +34,64 @@ public class StockService {
 
     @Transactional
     public StockMovementResponse recordMovement(StockMovementRequest req) {
-        Medicine medicine = medicineRepo.findById(req.medicineId())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Medicine not found: " + req.medicineId()));
-
+        Long uid = AuthHelper.getCurrentUserId();
+        Medicine medicine = medicineRepo.findById(req.medicineId(), uid)
+                .orElseThrow(() -> new ResourceNotFoundException("Medicine not found: " + req.medicineId()));
         MovementType type = MovementType.valueOf(req.type());
         int currentQty = medicine.getStockQty();
         int newQty;
-
         if (type == MovementType.IN) {
             newQty = currentQty + req.quantity();
         } else {
             if (req.quantity() > currentQty) {
-                throw new BusinessException(
-                        "Insufficient stock. Available: " + currentQty
-                                + ", requested: " + req.quantity());
+                throw new BusinessException("Insufficient stock. Available: " + currentQty + ", requested: " + req.quantity());
             }
             newQty = currentQty - req.quantity();
         }
-
-        medicineRepo.updateStock(medicine.getId(), newQty);
-
+        medicineRepo.updateStock(medicine.getId(), newQty, uid);
         StockMovement sm = new StockMovement();
         sm.setMedicineId(req.medicineId());
         sm.setType(type);
         sm.setQuantity(req.quantity());
         sm.setOccurredAt(LocalDateTime.now());
         sm.setNote(req.note());
-        sm = movementRepo.save(sm);
-
-        // Log
-        logRepo.log(
-                type == MovementType.IN ? "STOCK_IN" : "STOCK_OUT",
-                "MEDICINE", medicine.getId(),
-                medicine.getName() + " x" + req.quantity());
-
-        return new StockMovementResponse(
-                sm.getId(), sm.getMedicineId(), medicine.getName(),
-                sm.getType().name(), sm.getQuantity(),
-                sm.getOccurredAt(), sm.getNote());
+        sm = movementRepo.save(sm, uid);
+        logRepo.log(type == MovementType.IN ? "STOCK_IN" : "STOCK_OUT", "MEDICINE", medicine.getId(),
+                medicine.getName() + " x" + req.quantity(), uid);
+        return new StockMovementResponse(sm.getId(), sm.getMedicineId(), medicine.getName(),
+                sm.getType().name(), sm.getQuantity(), sm.getOccurredAt(), sm.getNote());
     }
 
     public List<StockMovementResponse> getMovements(int limit) {
-        return movementRepo.findAll(limit).stream()
-                .map(this::toResponse).toList();
+        Long uid = AuthHelper.getCurrentUserId();
+        return movementRepo.findAll(limit, uid).stream().map(this::toResponse).toList();
     }
 
     public List<StockMovementResponse> getMovementsByMedicine(Long medicineId) {
-        return movementRepo.findByMedicine(medicineId).stream()
-                .map(this::toResponse).toList();
+        Long uid = AuthHelper.getCurrentUserId();
+        return movementRepo.findByMedicine(medicineId, uid).stream().map(this::toResponse).toList();
     }
 
-    public List<StockMovementResponse> getMovementsByDateRange(
-            LocalDateTime from, LocalDateTime to) {
-        return movementRepo.findByDateRange(from, to).stream()
-                .map(this::toResponse).toList();
+    public List<StockMovementResponse> getMovementsByDateRange(LocalDateTime from, LocalDateTime to) {
+        Long uid = AuthHelper.getCurrentUserId();
+        return movementRepo.findByDateRange(from, to, uid).stream().map(this::toResponse).toList();
     }
 
     public StockSummary getStockSummary() {
-        long total = medicineRepo.count();
-        long outOfStock = medicineRepo.countOutOfStock();
-        long lowStock = medicineRepo.countLowStock(10);
-
+        Long uid = AuthHelper.getCurrentUserId();
+        long total = medicineRepo.count(uid);
+        long outOfStock = medicineRepo.countOutOfStock(uid);
+        long lowStock = medicineRepo.countLowStock(10, uid);
         BigDecimal totalValue = BigDecimal.ZERO;
-        List<Medicine> all = medicineRepo.findAll();
-        for (Medicine m : all) {
-            totalValue = totalValue.add(
-                    m.getPrice().multiply(BigDecimal.valueOf(m.getStockQty())));
+        for (Medicine m : medicineRepo.findAll(uid)) {
+            totalValue = totalValue.add(m.getPrice().multiply(BigDecimal.valueOf(m.getStockQty())));
         }
-
         return new StockSummary(total, outOfStock, lowStock, totalValue);
     }
 
     public List<CategoryStats> getCategoryStats() {
-        return movementRepo.categoryStats().stream()
+        Long uid = AuthHelper.getCurrentUserId();
+        return movementRepo.categoryStats(uid).stream()
                 .map(row -> new CategoryStats(
                         ((Number) row.get("category_id")).longValue(),
                         (String) row.get("category_name"),
@@ -118,20 +102,18 @@ public class StockService {
     }
 
     public List<MovementSummary> getMonthlySummary(int months) {
-        return movementRepo.monthlySummary(months).stream()
+        Long uid = AuthHelper.getCurrentUserId();
+        return movementRepo.monthlySummary(months, uid).stream()
                 .map(row -> new MovementSummary(
                         (String) row.get("period"),
                         ((Number) row.get("total_in")).intValue(),
                         ((Number) row.get("total_out")).intValue(),
-                        ((Number) row.get("total_in")).intValue()
-                                - ((Number) row.get("total_out")).intValue()
+                        ((Number) row.get("total_in")).intValue() - ((Number) row.get("total_out")).intValue()
                 )).toList();
     }
 
     private StockMovementResponse toResponse(StockMovement sm) {
-        return new StockMovementResponse(
-                sm.getId(), sm.getMedicineId(), sm.getMedicineName(),
-                sm.getType().name(), sm.getQuantity(),
-                sm.getOccurredAt(), sm.getNote());
+        return new StockMovementResponse(sm.getId(), sm.getMedicineId(), sm.getMedicineName(),
+                sm.getType().name(), sm.getQuantity(), sm.getOccurredAt(), sm.getNote());
     }
 }

@@ -17,7 +17,6 @@ public class CategoryRepository {
 
     private final JdbcTemplate jdbc;
 
-    // Αυτό μετατρέπει κάθε row της βάσης σε MedCategory object
     private static final RowMapper<MedCategory> ROW_MAPPER = (rs, rowNum) -> {
         MedCategory c = new MedCategory();
         c.setId(rs.getLong("id"));
@@ -26,55 +25,55 @@ public class CategoryRepository {
         return c;
     };
 
-    // Constructor injection — το Spring δίνει αυτόματα το JdbcTemplate
     public CategoryRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    public List<MedCategory> findAll() {
-        return jdbc.query("SELECT * FROM med_categories ORDER BY name", ROW_MAPPER);
+    public List<MedCategory> findAll(Long userId) {
+        return jdbc.query("SELECT * FROM med_categories WHERE user_id = ? ORDER BY name", ROW_MAPPER, userId);
     }
 
-    public Optional<MedCategory> findById(Long id) {
+    public Optional<MedCategory> findById(Long id, Long userId) {
         List<MedCategory> results = jdbc.query(
-                "SELECT * FROM med_categories WHERE id = ?", ROW_MAPPER, id);
+                "SELECT * FROM med_categories WHERE id = ? AND user_id = ?", ROW_MAPPER, id, userId);
         return results.stream().findFirst();
     }
 
-    public Optional<MedCategory> findByName(String name) {
+    public Optional<MedCategory> findByName(String name, Long userId) {
         List<MedCategory> results = jdbc.query(
-                "SELECT * FROM med_categories WHERE name = ?", ROW_MAPPER, name);
+                "SELECT * FROM med_categories WHERE name = ? AND user_id = ?", ROW_MAPPER, name, userId);
         return results.stream().findFirst();
     }
 
-    public MedCategory save(MedCategory category) {
+    public MedCategory save(MedCategory category, Long userId) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO med_categories (name, description) VALUES (?, ?)",
+                    "INSERT INTO med_categories (name, description, user_id) VALUES (?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, category.getName());
             ps.setString(2, category.getDescription());
+            ps.setLong(3, userId);
             return ps;
         }, keyHolder);
         category.setId(keyHolder.getKey().longValue());
         return category;
     }
 
-    public int update(MedCategory category) {
+    public int update(MedCategory category, Long userId) {
         return jdbc.update(
-                "UPDATE med_categories SET name = ?, description = ? WHERE id = ?",
-                category.getName(), category.getDescription(), category.getId());
+                "UPDATE med_categories SET name = ?, description = ? WHERE id = ? AND user_id = ?",
+                category.getName(), category.getDescription(), category.getId(), userId);
     }
 
-    public int deleteById(Long id) {
-        return jdbc.update("DELETE FROM med_categories WHERE id = ?", id);
+    public int deleteById(Long id, Long userId) {
+        return jdbc.update("DELETE FROM med_categories WHERE id = ? AND user_id = ?", id, userId);
     }
 
-    public int countMedicines(Long categoryId) {
+    public int countMedicines(Long categoryId, Long userId) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM medicines WHERE category_id = ?",
-                Integer.class, categoryId);
+                "SELECT COUNT(*) FROM medicines WHERE category_id = ? AND user_id = ?",
+                Integer.class, categoryId, userId);
         return count != null ? count : 0;
     }
 }

@@ -17,19 +17,6 @@ public class MedicineRepository {
 
     private final JdbcTemplate jdbc;
 
-    // Απλός mapper χωρίς JOIN
-    private static final RowMapper<Medicine> ROW_MAPPER = (rs, rowNum) -> {
-        Medicine m = new Medicine();
-        m.setId(rs.getLong("id"));
-        m.setCode(rs.getString("code"));
-        m.setName(rs.getString("name"));
-        m.setPrice(rs.getBigDecimal("price"));
-        m.setStockQty(rs.getInt("stock_qty"));
-        m.setCategoryId(rs.getLong("category_id"));
-        return m;
-    };
-
-    // Mapper με JOIN — φέρνει και το category name
     private static final RowMapper<Medicine> ROW_MAPPER_WITH_CATEGORY = (rs, rowNum) -> {
         Medicine m = new Medicine();
         m.setId(rs.getLong("id"));
@@ -42,7 +29,6 @@ public class MedicineRepository {
         return m;
     };
 
-    // Βασικό SELECT με JOIN — το χρησιμοποιούμε παντού
     private static final String SELECT_WITH_JOIN =
             """
             SELECT m.id, m.code, m.name AS m_name, m.price, m.stock_qty,
@@ -55,99 +41,92 @@ public class MedicineRepository {
         this.jdbc = jdbc;
     }
 
-    public List<Medicine> findAll() {
-        return jdbc.query(SELECT_WITH_JOIN + " ORDER BY m.name",
-                ROW_MAPPER_WITH_CATEGORY);
+    public List<Medicine> findAll(Long userId) {
+        return jdbc.query(SELECT_WITH_JOIN + " WHERE m.user_id = ? ORDER BY m.name",
+                ROW_MAPPER_WITH_CATEGORY, userId);
     }
 
-    public Optional<Medicine> findById(Long id) {
+    public Optional<Medicine> findById(Long id, Long userId) {
         List<Medicine> results = jdbc.query(
-                SELECT_WITH_JOIN + " WHERE m.id = ?",
-                ROW_MAPPER_WITH_CATEGORY, id);
+                SELECT_WITH_JOIN + " WHERE m.id = ? AND m.user_id = ?",
+                ROW_MAPPER_WITH_CATEGORY, id, userId);
         return results.stream().findFirst();
     }
 
-    public Optional<Medicine> findByCode(String code) {
+    public Optional<Medicine> findByCode(String code, Long userId) {
         List<Medicine> results = jdbc.query(
-                SELECT_WITH_JOIN + " WHERE m.code = ?",
-                ROW_MAPPER_WITH_CATEGORY, code);
+                SELECT_WITH_JOIN + " WHERE m.code = ? AND m.user_id = ?",
+                ROW_MAPPER_WITH_CATEGORY, code, userId);
         return results.stream().findFirst();
     }
 
-    public List<Medicine> findByCategory(Long categoryId) {
+    public List<Medicine> findByCategory(Long categoryId, Long userId) {
         return jdbc.query(
-                SELECT_WITH_JOIN + " WHERE m.category_id = ? ORDER BY m.name",
-                ROW_MAPPER_WITH_CATEGORY, categoryId);
+                SELECT_WITH_JOIN + " WHERE m.category_id = ? AND m.user_id = ? ORDER BY m.name",
+                ROW_MAPPER_WITH_CATEGORY, categoryId, userId);
     }
 
-    public List<Medicine> findLowStock(int threshold) {
+    public List<Medicine> findLowStock(int threshold, Long userId) {
         return jdbc.query(
-                SELECT_WITH_JOIN + " WHERE m.stock_qty <= ? ORDER BY m.stock_qty ASC",
-                ROW_MAPPER_WITH_CATEGORY, threshold);
+                SELECT_WITH_JOIN + " WHERE m.stock_qty <= ? AND m.user_id = ? ORDER BY m.stock_qty ASC",
+                ROW_MAPPER_WITH_CATEGORY, threshold, userId);
     }
 
-    public List<Medicine> search(String keyword) {
+    public List<Medicine> search(String keyword, Long userId) {
         String pattern = "%" + keyword + "%";
         return jdbc.query(
-                SELECT_WITH_JOIN + " WHERE m.name LIKE ? OR m.code LIKE ? ORDER BY m.name",
-                ROW_MAPPER_WITH_CATEGORY, pattern, pattern);
+                SELECT_WITH_JOIN + " WHERE (m.name LIKE ? OR m.code LIKE ?) AND m.user_id = ? ORDER BY m.name",
+                ROW_MAPPER_WITH_CATEGORY, pattern, pattern, userId);
     }
 
-    public Medicine save(Medicine medicine) {
+    public Medicine save(Medicine medicine, Long userId) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    """
-                    INSERT INTO medicines (code, name, price, stock_qty, category_id)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
+                    "INSERT INTO medicines (code, name, price, stock_qty, category_id, user_id) VALUES (?, ?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, medicine.getCode());
             ps.setString(2, medicine.getName());
             ps.setBigDecimal(3, medicine.getPrice());
             ps.setInt(4, medicine.getStockQty());
             ps.setLong(5, medicine.getCategoryId());
+            ps.setLong(6, userId);
             return ps;
         }, keyHolder);
         medicine.setId(keyHolder.getKey().longValue());
         return medicine;
     }
 
-    public int update(Medicine medicine) {
+    public int update(Medicine medicine, Long userId) {
         return jdbc.update(
-                """
-                UPDATE medicines SET code = ?, name = ?, price = ?,
-                       stock_qty = ?, category_id = ?
-                WHERE id = ?
-                """,
+                "UPDATE medicines SET code = ?, name = ?, price = ?, stock_qty = ?, category_id = ? WHERE id = ? AND user_id = ?",
                 medicine.getCode(), medicine.getName(), medicine.getPrice(),
-                medicine.getStockQty(), medicine.getCategoryId(), medicine.getId());
+                medicine.getStockQty(), medicine.getCategoryId(), medicine.getId(), userId);
     }
 
-    public int updateStock(Long id, int newQty) {
+    public int updateStock(Long id, int newQty, Long userId) {
         return jdbc.update(
-                "UPDATE medicines SET stock_qty = ? WHERE id = ?", newQty, id);
+                "UPDATE medicines SET stock_qty = ? WHERE id = ? AND user_id = ?", newQty, id, userId);
     }
 
-    public int deleteById(Long id) {
-        return jdbc.update("DELETE FROM medicines WHERE id = ?", id);
+    public int deleteById(Long id, Long userId) {
+        return jdbc.update("DELETE FROM medicines WHERE id = ? AND user_id = ?", id, userId);
     }
 
-    public long count() {
-        Long c = jdbc.queryForObject("SELECT COUNT(*) FROM medicines", Long.class);
+    public long count(Long userId) {
+        Long c = jdbc.queryForObject("SELECT COUNT(*) FROM medicines WHERE user_id = ?", Long.class, userId);
         return c != null ? c : 0;
     }
 
-    public long countOutOfStock() {
-        Long c = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM medicines WHERE stock_qty = 0", Long.class);
+    public long countOutOfStock(Long userId) {
+        Long c = jdbc.queryForObject("SELECT COUNT(*) FROM medicines WHERE stock_qty = 0 AND user_id = ?", Long.class, userId);
         return c != null ? c : 0;
     }
 
-    public long countLowStock(int threshold) {
+    public long countLowStock(int threshold, Long userId) {
         Long c = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM medicines WHERE stock_qty > 0 AND stock_qty <= ?",
-                Long.class, threshold);
+                "SELECT COUNT(*) FROM medicines WHERE stock_qty > 0 AND stock_qty <= ? AND user_id = ?",
+                Long.class, threshold, userId);
         return c != null ? c : 0;
     }
 }

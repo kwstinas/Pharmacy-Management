@@ -75,7 +75,7 @@ public class AuthController {
         user.setRole("PHARMACIST");
         userRepo.save(user);
 
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok("Registration successful", Map.of(
@@ -104,7 +104,7 @@ public class AuthController {
                     .body(ApiResponse.error("Invalid username or password"));
         }
 
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
 
         return ResponseEntity.ok(ApiResponse.ok("Login successful", Map.of(
                 "token", token,

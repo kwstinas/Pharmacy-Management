@@ -6,6 +6,7 @@ import com.pharmacy.exception.BusinessException;
 import com.pharmacy.model.MedCategory;
 import com.pharmacy.repository.CategoryRepository;
 import com.pharmacy.repository.ActivityLogRepository;
+import com.pharmacy.security.AuthHelper;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,60 +23,52 @@ public class CategoryService {
     }
 
     public List<CategoryResponse> findAll() {
-        return repo.findAll().stream()
-                .map(c -> new CategoryResponse(
-                        c.getId(), c.getName(), c.getDescription(),
-                        repo.countMedicines(c.getId())))
+        Long uid = AuthHelper.getCurrentUserId();
+        return repo.findAll(uid).stream()
+                .map(c -> new CategoryResponse(c.getId(), c.getName(), c.getDescription(), repo.countMedicines(c.getId(), uid)))
                 .toList();
     }
 
     public CategoryResponse findById(Long id) {
-        MedCategory c = repo.findById(id)
+        Long uid = AuthHelper.getCurrentUserId();
+        MedCategory c = repo.findById(id, uid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
-        return new CategoryResponse(c.getId(), c.getName(), c.getDescription(),
-                repo.countMedicines(c.getId()));
+        return new CategoryResponse(c.getId(), c.getName(), c.getDescription(), repo.countMedicines(c.getId(), uid));
     }
 
     public CategoryResponse create(CategoryRequest req) {
-        repo.findByName(req.name()).ifPresent(existing -> {
+        Long uid = AuthHelper.getCurrentUserId();
+        repo.findByName(req.name(), uid).ifPresent(e -> {
             throw new BusinessException("Category already exists: " + req.name());
         });
-
         MedCategory c = new MedCategory();
         c.setName(req.name());
         c.setDescription(req.description());
-        c = repo.save(c);
-
-        logRepo.log("CREATE", "CATEGORY", c.getId(), c.getName());
-
+        c = repo.save(c, uid);
+        logRepo.log("CREATE", "CATEGORY", c.getId(), c.getName(), uid);
         return new CategoryResponse(c.getId(), c.getName(), c.getDescription(), 0);
     }
 
     public CategoryResponse update(Long id, CategoryRequest req) {
-        MedCategory c = repo.findById(id)
+        Long uid = AuthHelper.getCurrentUserId();
+        MedCategory c = repo.findById(id, uid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
-
         c.setName(req.name());
         c.setDescription(req.description());
-        repo.update(c);
-
-        logRepo.log("UPDATE", "CATEGORY", id, c.getName());
-
-        return new CategoryResponse(c.getId(), c.getName(), c.getDescription(),
-                repo.countMedicines(id));
+        repo.update(c, uid);
+        logRepo.log("UPDATE", "CATEGORY", id, c.getName(), uid);
+        return new CategoryResponse(c.getId(), c.getName(), c.getDescription(), repo.countMedicines(id, uid));
     }
 
     public void delete(Long id) {
-        MedCategory c = repo.findById(id)
+        Long uid = AuthHelper.getCurrentUserId();
+        MedCategory c = repo.findById(id, uid)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found: " + id));
-
-        int medicines = repo.countMedicines(id);
+        int medicines = repo.countMedicines(id, uid);
         if (medicines > 0) {
-            throw new BusinessException(
-                    "Cannot delete category with " + medicines + " medicines. Move them first.");
+            throw new BusinessException("Cannot delete category with " + medicines + " medicines.");
         }
-        repo.deleteById(id);
-
-        logRepo.log("DELETE", "CATEGORY", id, c.getName());
+        repo.deleteById(id, uid);
+        logRepo.log("DELETE", "CATEGORY", id, c.getName(), uid);
     }
 }

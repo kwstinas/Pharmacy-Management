@@ -30,14 +30,13 @@ public class IngredientRepository {
                 ROW_MAPPER, medicineId);
     }
 
-    public void saveAll(Long medicineId, List<String> ingredients) {
-        // Σβήνουμε τα παλιά και βάζουμε τα νέα
+    public void saveAll(Long medicineId, List<String> ingredients, Long userId) {
         jdbc.update("DELETE FROM medicine_ingredients WHERE medicine_id = ?", medicineId);
         for (String name : ingredients) {
             if (name != null && !name.trim().isEmpty()) {
                 jdbc.update(
-                        "INSERT INTO medicine_ingredients (medicine_id, ingredient_name) VALUES (?, ?)",
-                        medicineId, name.trim());
+                        "INSERT INTO medicine_ingredients (medicine_id, ingredient_name, user_id) VALUES (?, ?, ?)",
+                        medicineId, name.trim(), userId);
             }
         }
     }
@@ -46,14 +45,10 @@ public class IngredientRepository {
         jdbc.update("DELETE FROM medicine_ingredients WHERE medicine_id = ?", medicineId);
     }
 
-    /**
-     * Αναζήτηση φαρμάκων βάσει συστατικού.
-     * Επιστρέφει τα medicine IDs που περιέχουν το συστατικό.
-     */
-    public List<Long> findMedicineIdsByIngredient(String ingredient) {
+    public List<Long> findMedicineIdsByIngredient(String ingredient, Long userId) {
         String pattern = "%" + ingredient + "%";
         return jdbc.queryForList(
-                "SELECT DISTINCT medicine_id FROM medicine_ingredients WHERE ingredient_name LIKE ?",
-                Long.class, pattern);
+                "SELECT DISTINCT medicine_id FROM medicine_ingredients WHERE ingredient_name LIKE ? AND user_id = ?",
+                Long.class, pattern, userId);
     }
 }
