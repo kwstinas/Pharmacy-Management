@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API = "http://localhost:8080/api";
-
+const API = "/api";
 // ─── API helper with auth token ───
 async function api(path, options = {}) {
   try {
@@ -18,8 +17,7 @@ async function api(path, options = {}) {
 // Auth-specific calls (no token needed)
 async function authApi(path, body) {
   try {
-    const res = await fetch(`${API}/auth${path}`, {
-      method: "POST",
+      const res = await fetch(`/api/auth${path}`, {      method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });

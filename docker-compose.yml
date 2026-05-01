@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  # === MySQL Database ===
+  db:
+    image: mysql:8.0
+    container_name: pharmacy-db
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: pharmacy_db
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - pharmacy-data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # === Spring Boot Backend ===
+  backend:
+    build: .
+    container_name: pharmacy-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/pharmacy_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 1234
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # === React Frontend ===
+  frontend:
+    build: ./frontend
+    container_name: pharmacy-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pharmacy-data:

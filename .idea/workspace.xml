@@ -5,21 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c1b9db86-841d-4493-9fcc-224a59505aaf" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/security/AuthHelper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.dockerignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Dockerfile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/docker-compose.yml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/.dockerignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/Dockerfile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/frontend/nginx.conf" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/init.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/AuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/ActivityLogRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/ActivityLogRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/CategoryRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/CategoryRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/IngredientRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/IngredientRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/MedicineRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/MedicineRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/StockMovementRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/repository/StockMovementRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/security/JwtFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/security/JwtFilter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/security/JwtUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/security/JwtUtil.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/CategoryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/CategoryService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/LogService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/LogService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/MedicineService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/MedicineService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/StockService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/StockService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/exception/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/exception/GlobalExceptionHandler.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,6 +25,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Class" />
+        <option value="Dockerfile" />
       </list>
     </option>
   </component>
