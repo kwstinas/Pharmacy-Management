@@ -196,7 +196,19 @@ src/main/java/com/pharmacy/
     ├── BusinessException.java
     └── GlobalExceptionHandler.java   #   Unified error responses
 ```
+## Docker
 
+Run everything with one command:
+
+```bash
+docker-compose up --build
+```
+
+Opens at `http://localhost`. Runs MySQL, Spring Boot, and React in containers. No local installations needed.
+
+```bash
+docker-compose down -v   # Stop and reset data
+```
 ##  Design Decisions
 
 | Decision | Rationale |
