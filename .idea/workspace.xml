@@ -5,9 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c1b9db86-841d-4493-9fcc-224a59505aaf" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/StockServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/CategoryServiceTest.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,7 +53,24 @@
     "project.structure.side.proportion": "0.0"
   }
 }]]></component>
-  <component name="RunManager" selected="JUnit.StockServiceTest (1)">
+  <component name="RunManager" selected="JUnit.CategoryServiceTest">
+    <configuration name="CategoryServiceTest" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="pharmacy-api" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.pharmacy.service.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.pharmacy.service" />
+      <option name="MAIN_CLASS_NAME" value="com.pharmacy.service.CategoryServiceTest" />
+      <option name="METHOD_NAME" value="" />
+      <option name="TEST_OBJECT" value="class" />
+      <option name="VM_PARAMETERS" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="StockServiceTest (1)" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
       <module name="pharmacy-api" />
       <extension name="coverage">
@@ -124,11 +140,13 @@
       </method>
     </configuration>
     <list>
+      <item itemvalue="JUnit.CategoryServiceTest" />
       <item itemvalue="JUnit.StockServiceTest (1)" />
       <item itemvalue="JUnit.StockServiceTest" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="JUnit.CategoryServiceTest" />
         <item itemvalue="JUnit.StockServiceTest (1)" />
         <item itemvalue="JUnit.StockServiceTest" />
         <item itemvalue="JUnit.StockServiceTest" />
