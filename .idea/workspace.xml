@@ -5,20 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c1b9db86-841d-4493-9fcc-224a59505aaf" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/test/java/com/pharmacy/controller/AuthControllerTest.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/MedicineServiceTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/CategoryController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/CategoryController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/LogController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/LogController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/MedicineController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/MedicineController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/ReportController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/ReportController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/StockController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/controller/StockController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/CategoryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/CategoryService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/LogService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/LogService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/MedicineService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/MedicineService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/pharmacy/service/StockService.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/pharmacy/StockService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/CategoryServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/CategoryServiceTest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/StockServiceTest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/com/pharmacy/service/StockServiceTest.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.github/workflows/ci.yml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
