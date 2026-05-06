@@ -1,7 +1,7 @@
 package com.pharmacy.controller;
 
 import com.pharmacy.dto.Dtos.*;
-import com.pharmacy.service.CategoryService;
+import com.pharmacy.CategoryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

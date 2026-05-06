@@ -1,4 +1,4 @@
-package com.pharmacy.service;
+package com.pharmacy;
 
 import com.pharmacy.dto.Dtos.*;
 import com.pharmacy.exception.ResourceNotFoundException;

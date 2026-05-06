@@ -1,7 +1,7 @@
 package com.pharmacy.controller;
 
 import com.pharmacy.dto.Dtos.*;
-import com.pharmacy.service.LogService;
+import com.pharmacy.LogService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -1,7 +1,7 @@
 package com.pharmacy.controller;
 
 import com.pharmacy.dto.Dtos.*;
-import com.pharmacy.service.StockService;
+import com.pharmacy.StockService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

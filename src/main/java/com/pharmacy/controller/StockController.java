@@ -1,7 +1,7 @@
 package com.pharmacy.controller;
 
 import com.pharmacy.dto.Dtos.*;
-import com.pharmacy.service.StockService;
+import com.pharmacy.StockService;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
